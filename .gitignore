@@ -1,0 +1,51 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+dist/
+build/
+eggs/
+*.egg
+
+# Virtual environments
+soc_env/
+venv/
+.venv/
+env/
+
+# Environment variables
+.env
+.env.local
+.env.production
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+logs/
+*.log
+
+# Data files (too large for git)
+*.tgz
+*.tar.gz
+*.zip
+botsv3_data_set.tgz
+
+# Models (large binary files)
+models/model-best/
+
+# Experiments / scratch
+experiments/
+
+# Dashboard build artifacts
+dashboard/

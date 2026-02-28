@@ -1,0 +1,1237 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OpenSentinel — SOC Command Center</title>
+    <link rel="icon" type="image/svg+xml"
+        href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛡️</text></svg>">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap');
+
+        :root {
+            /* 🌑 Core Palette - Deep Space Cyberpunk */
+            --bg-dark: #05050A;
+            --bg-panel: rgba(13, 13, 25, 0.6);
+            --bg-panel-hover: rgba(20, 20, 40, 0.7);
+
+            /* 💎 Glassmorphism */
+            --glass-border: 1px solid rgba(255, 255, 255, 0.08);
+            --glass-highlight: 1px solid rgba(255, 255, 255, 0.15);
+            --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.8);
+            --backdrop-blur: 24px;
+
+            /* ⚡ Neon Accents */
+            --accent-primary: #00f2ff;
+            /* Cyan */
+            --accent-secondary: #bd00ff;
+            /* Purple */
+            --accent-success: #00ff9d;
+            --accent-warning: #ffbd2e;
+            --accent-danger: #ff0055;
+
+            /* 📝 Typography */
+            --font-main: 'Inter', sans-serif;
+            --font-code: 'JetBrains Mono', monospace;
+            --text-primary: #ffffff;
+            --text-secondary: #94a3b8;
+            --text-muted: #64748b;
+
+            /* 📐 Spacing & Radius */
+            --radius-md: 16px;
+            --radius-sm: 8px;
+            --spacing-sm: 10px;
+            --spacing-md: 20px;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: var(--font-main);
+            background-color: var(--bg-dark);
+            background-image:
+                radial-gradient(circle at 10% 20%, rgba(189, 0, 255, 0.15), transparent 40%),
+                radial-gradient(circle at 90% 80%, rgba(0, 242, 255, 0.1), transparent 40%),
+                radial-gradient(circle at 50% 50%, rgba(5, 5, 10, 1), transparent 100%);
+            color: var(--text-primary);
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* ✨ Custom Scrollbars */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 3px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        /* 📦 Main Grid Layout */
+        .dashboard-container {
+            display: grid;
+            grid-template-columns: 280px 1fr;
+            /* Sidebar, Main */
+            grid-template-rows: 60px 1fr;
+            /* Header, Content */
+            height: 100vh;
+            overflow: hidden;
+            background: radial-gradient(circle at 50% 50%, #1a1a2e 0%, #0f0f1a 100%);
+        }
+
+        /* 🔝 Global Header */
+        .app-header {
+            grid-column: 1 / -1;
+            background: rgba(10, 10, 15, 0.8);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 24px;
+            z-index: 100;
+        }
+
+        .brand {
+            font-size: 1.2rem;
+            font-weight: 800;
+            letter-spacing: 1px;
+            color: white;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            text-transform: uppercase;
+        }
+
+        /* 🧭 Sidebar */
+        .sidebar {
+            grid-row: 2;
+            background: rgba(15, 15, 20, 0.6);
+            border-right: 1px solid rgba(255, 255, 255, 0.05);
+            display: flex;
+            flex-direction: column;
+            padding: 16px;
+            gap: 20px;
+        }
+
+        .sidebar-nav {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .nav-item {
+            padding: 10px 16px;
+            border-radius: var(--radius-sm);
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 0.9rem;
+            border: 1px solid transparent;
+        }
+
+        .nav-item:hover,
+        .nav-item.active {
+            background: rgba(0, 242, 255, 0.05);
+            color: var(--accent-primary);
+            border-color: rgba(0, 242, 255, 0.1);
+        }
+
+        /* 📊 Main Content */
+        .main-content {
+            grid-row: 2;
+            padding: 24px;
+            overflow-y: auto;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            grid-template-rows: auto auto 1fr;
+            /* Status, Timeline, Panels */
+            gap: 20px;
+        }
+
+        /* 🛡️ Security Footer */
+        .security-footer {
+            grid-column: 2 / -1;
+            grid-row: 2 / 3;
+            height: 90px;
+        }
+
+        /* 🖼️ Glass Panel Component */
+        .glass-panel {
+            background: var(--bg-panel);
+            backdrop-filter: blur(var(--backdrop-blur));
+            -webkit-backdrop-filter: blur(var(--backdrop-blur));
+            border: var(--glass-border);
+            border-radius: var(--radius-md);
+            box-shadow: var(--glass-shadow);
+            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+
+        .glass-panel::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+            opacity: 0.5;
+        }
+
+        .glass-panel:hover {
+            border: var(--glass-highlight);
+            transform: translateY(-2px);
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6);
+        }
+
+        /* 🏷️ Header Styles */
+        .panel-header {
+            padding: 12px 16px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(0, 0, 0, 0.2);
+            flex-shrink: 0;
+        }
+
+        .panel-title {
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1.2px;
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .panel-badge {
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 10px;
+            font-weight: 700;
+            background: rgba(255, 255, 255, 0.1);
+            color: var(--text-primary);
+        }
+
+        /* 📜 Content Styles */
+        .panel-body {
+            padding: 16px;
+            flex: 1;
+            overflow-y: auto;
+            position: relative;
+        }
+
+        /* 🟢 Header Bar (Top Row of Main) */
+        .header-bar {
+            grid-column: 1 / -1;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 8px;
+        }
+
+        .status-pill {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 16px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .status-pill.offline {
+            border-color: var(--accent-danger);
+            color: var(--accent-danger);
+        }
+
+        .status-pill.online {
+            border-color: var(--accent-success);
+            color: var(--accent-success);
+        }
+
+        .sentinel-controls {
+            display: flex;
+            gap: 8px;
+        }
+
+        .control-btn {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: var(--text-secondary);
+            padding: 6px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            transition: 0.2s;
+        }
+
+        .control-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+        }
+
+        .control-btn.active {
+            background: rgba(0, 255, 157, 0.15);
+            border-color: var(--accent-success);
+            color: var(--accent-success);
+        }
+
+        /* ⚔️ Kill Chain Bar */
+        .kill-chain-container {
+            grid-column: 1 / -1;
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: var(--radius-sm);
+            padding: 10px 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .kc-phases {
+            display: flex;
+            gap: 4px;
+            height: 4px;
+            border-radius: 2px;
+            overflow: hidden;
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .kc-phase {
+            flex: 1;
+            background: rgba(255, 255, 255, 0.1);
+            transition: 0.3s;
+        }
+
+        .kc-phase.active {
+            background: var(--accent-secondary);
+            box-shadow: 0 0 10px var(--accent-secondary);
+        }
+
+        /* 💬 Chat specific */
+        .chat-container {
+            height: 100%;
+        }
+
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .message {
+            max-width: 90%;
+            padding: 12px 16px;
+            border-radius: var(--radius-sm);
+            font-size: 0.9rem;
+            line-height: 1.6;
+            animation: slideIn 0.3s ease-out;
+        }
+
+        .message.user {
+            align-self: flex-end;
+            background: linear-gradient(135deg, rgba(0, 242, 255, 0.15), rgba(0, 242, 255, 0.05));
+            border: 1px solid rgba(0, 242, 255, 0.3);
+            color: var(--accent-primary);
+            border-bottom-right-radius: 2px;
+        }
+
+        .message.agent {
+            align-self: flex-start;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-bottom-left-radius: 2px;
+            color: var(--text-primary);
+        }
+
+        .chat-input-area {
+            padding: 16px;
+            background: rgba(0, 0, 0, 0.2);
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+            display: flex;
+            gap: 10px;
+        }
+
+        .glass-input {
+            flex: 1;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: white;
+            padding: 10px;
+            border-radius: var(--radius-sm);
+            outline: none;
+            transition: 0.2s;
+        }
+
+        .glass-input:focus {
+            border-color: var(--accent-primary);
+            box-shadow: 0 0 0 2px rgba(0, 242, 255, 0.1);
+        }
+
+        .glass-btn {
+            background: var(--accent-primary);
+            color: #000;
+            border: none;
+            padding: 0 20px;
+            border-radius: var(--radius-sm);
+            font-weight: 700;
+            cursor: pointer;
+            text-transform: uppercase;
+            font-size: 0.75rem;
+            transition: 0.2s;
+        }
+
+        .glass-btn:hover {
+            filter: brightness(1.1);
+            box-shadow: 0 0 15px rgba(0, 242, 255, 0.4);
+        }
+
+        /* 🚪 Modal */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(10px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            opacity: 0;
+            pointer-events: none;
+            transition: 0.3s;
+        }
+
+        .modal-overlay.visible {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .modal-content {
+            width: 400px;
+            padding: 24px;
+            border: 1px solid var(--accent-primary);
+            box-shadow: 0 0 50px rgba(0, 242, 255, 0.2);
+        }
+
+        .form-group {
+            margin-bottom: 12px;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            margin-bottom: 4px;
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+            justify-content: flex-end;
+        }
+
+        /* 🚨 Incident Cards */
+        .incident-card {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            padding: 12px;
+            border-radius: var(--radius-sm);
+            margin-bottom: 8px;
+            position: relative;
+            overflow: hidden;
+            transition: 0.2s;
+        }
+
+        .incident-card:hover {
+            background: rgba(255, 255, 255, 0.05);
+            border-color: rgba(255, 255, 255, 0.1);
+        }
+
+        .incident-card::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 3px;
+            background: var(--accent-secondary);
+        }
+
+        .incident-card.critical::before {
+            background: var(--accent-danger);
+        }
+
+        .incident-card.high::before {
+            background: var(--accent-warning);
+        }
+
+        .alert-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 4px;
+        }
+
+        .alert-rule {
+            font-weight: 600;
+            font-size: 0.85rem;
+            color: #fff;
+        }
+
+        .severity {
+            font-size: 0.65rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            padding: 2px 6px;
+            border-radius: 4px;
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .severity.critical {
+            color: var(--accent-danger);
+            background: rgba(255, 0, 85, 0.15);
+        }
+
+        /* 📉 Status Footer Metrics */
+        .security-grid {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 12px;
+            height: 100%;
+        }
+
+        .metric-tile {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            padding: 10px;
+            border-radius: var(--radius-sm);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            gap: 4px;
+        }
+
+        .metric-label {
+            font-size: 0.65rem;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            letter-spacing: 0.5px;
+        }
+
+        .metric-val {
+            font-size: 1.1rem;
+            font-weight: 700;
+            font-family: var(--font-code);
+            color: #fff;
+        }
+
+        /* 🎬 Animations */
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes pulse {
+            0% {
+                opacity: 0.5;
+            }
+
+            50% {
+                opacity: 1;
+            }
+
+            100% {
+                opacity: 0.5;
+            }
+        }
+
+        .live-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            display: inline-block;
+            animation: pulse 2s infinite;
+        }
+
+        .empty-state {
+            text-align: center;
+            color: var(--text-muted);
+            padding: 30px;
+            font-size: 0.85rem;
+        }
+
+        .empty-state .emoji {
+            font-size: 2rem;
+            display: block;
+            margin-bottom: 8px;
+        }
+
+        /* 📱 Mobile Responsiveness */
+        @media (max-width: 768px) {
+            .dashboard-container {
+                grid-template-columns: 60px 1fr;
+                grid-template-rows: auto 1fr;
+            }
+
+            .app-header {
+                flex-direction: column;
+                gap: 10px;
+                padding: 10px;
+                height: auto;
+            }
+
+            .brand {
+                font-size: 1rem;
+            }
+
+            .sidebar {
+                padding: 10px 6px;
+                align-items: center;
+            }
+
+            .nav-item {
+                justify-content: center;
+                padding: 10px;
+            }
+
+            .nav-text {
+                display: none;
+            }
+
+            .main-content {
+                grid-template-columns: 1fr;
+                padding: 10px;
+            }
+
+            .security-footer {
+                display: none;
+            }
+        }
+
+        /* ☰ Hamburger Menu & Drawer */
+        .hamburger-menu {
+            display: flex;
+            /* Visible on all screens as requested */
+            flex-direction: column;
+            justify-content: space-between;
+            width: 24px;
+            height: 18px;
+            cursor: pointer;
+            z-index: 200;
+            margin-left: 20px;
+        }
+
+        .bar {
+            width: 100%;
+            height: 2px;
+            background-color: var(--text-primary);
+            border-radius: 2px;
+            transition: all 0.3s ease-in-out;
+        }
+
+        /* Animate to X */
+        .hamburger-menu.open .bar:nth-child(1) {
+            transform: translateY(8px) rotate(45deg);
+            background-color: var(--accent-primary);
+        }
+
+        .hamburger-menu.open .bar:nth-child(2) {
+            opacity: 0;
+        }
+
+        .hamburger-menu.open .bar:nth-child(3) {
+            transform: translateY(-8px) rotate(-45deg);
+            background-color: var(--accent-primary);
+        }
+
+        .drawer {
+            position: fixed;
+            top: 0;
+            right: 0;
+            width: 280px;
+            height: 100%;
+            background: rgba(10, 10, 15, 0.95);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-left: 1px solid rgba(255, 255, 255, 0.1);
+            transform: translateX(100%);
+            transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+            z-index: 150;
+            display: flex;
+            flex-direction: column;
+            padding: 24px;
+            box-shadow: -10px 0 30px rgba(0, 0, 0, 0.5);
+        }
+
+        .drawer.open {
+            transform: translateX(0);
+        }
+
+        .drawer-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 40px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .sidebar-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(4px);
+            z-index: 140;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s;
+        }
+
+        .sidebar-overlay.open {
+            opacity: 1;
+            pointer-events: auto;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="dashboard-container">
+        <!-- 🔝 Global Header -->
+        <header class="app-header">
+            <div class="brand">
+                <span style="font-size: 1.5rem;">🛡️</span>
+                OpenSentinel <span
+                    style="font-weight:400; color:var(--text-muted); font-size:0.7rem; margin-top:4px; letter-spacing:1px;">COMMAND
+                    CENTER</span>
+            </div>
+
+            <div style="display:flex; gap:20px; align-items:center;">
+                <!-- Controls -->
+                <div class="sentinel-controls">
+                    <button id="start-btn" class="control-btn">Start Sentinel</button>
+                    <button id="stop-btn" class="control-btn" style="display:none;">Stop Sentinel</button>
+                    <div id="sentinel-status" class="status-pill offline">
+                        <span id="sentinel-text">Off</span>
+                    </div>
+                </div>
+
+                <div class="separator" style="width:1px; height:24px; background:rgba(255,255,255,0.1);"></div>
+
+                <div id="api-status" class="status-pill offline"><span id="api-text">API Disconnected</span></div>
+
+                <button class="glass-btn" onclick="openModal()"
+                    style="font-size:0.8rem; background:rgba(255,255,255,0.05);">⚙️</button>
+
+                <div class="status-pill online"
+                    style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1);">
+                    <span class="live-dot" style="background:var(--accent-success);"></span> Analyst
+                </div>
+
+                <!-- ☰ Toggle -->
+                <div class="hamburger-menu" id="menu-toggle">
+                    <div class="bar"></div>
+                    <div class="bar"></div>
+                    <div class="bar"></div>
+                </div>
+            </div>
+        </header>
+        <!-- 🧭 Sidebar -->
+        <div class="sidebar">
+            <div class="sidebar-nav">
+                <div class="nav-item active"><span class="icon">📊</span> <span class="nav-text">Overview</span></div>
+                <div class="nav-item"><span class="icon">🕵️</span> <span class="nav-text">Threat Hunt</span></div>
+                <div class="nav-item"><span class="icon">🚨</span> <span class="nav-text">Incidents</span> <span
+                        id="nav-incident-count"
+                        style="background:var(--accent-danger); padding:2px 6px; border-radius:10px; font-size:0.6rem; margin-left:auto; display:none;">0</span>
+                </div>
+
+            </div>
+
+            <div class="glass-panel chat-container" style="flex:1; display:flex; flex-direction:column;">
+                <div class="panel-header">
+                    <div class="panel-title"><span class="icon">💬</span> AI Analyst</div>
+                    <div class="status-pill online"><span class="live-dot"></span> Online</div>
+                </div>
+                <div class="chat-messages" id="chat-messages">
+                    <div class="message agent">🛡️ <strong>Sentinel AI</strong> online.<br>Ready to hunt. Ask me about
+                        logs, anomalies, or threat intel.</div>
+                </div>
+                <div class="chat-input-area">
+                    <input class="glass-input" id="chat-input" placeholder="Query logs or ask for analysis..." />
+                    <button class="glass-btn" id="send-btn">Send</button>
+                </div>
+                <div
+                    style="padding: 10px; border-top: 1px solid rgba(255,255,255,0.05); display: flex; justify-content: center;">
+                    <button class="glass-btn"
+                        style="background:transparent; border:1px solid rgba(255,255,255,0.1); font-size:0.7rem; width:100%;"
+                        onclick="openModal()">⚙️ Configure SIEM</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 📊 Main Content -->
+        <div class="main-content">
+            <!-- Header removed -->
+
+            <!-- Kill Chain Tracker -->
+            <div class="kill-chain-container">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+                    <span
+                        style="font-size:0.7rem; text-transform:uppercase; color:var(--text-muted); letter-spacing:1px;">⚔️
+                        MITRE ATT&CK Kill Chain</span>
+                    <span id="kc-count" style="font-size:0.7rem; color:var(--text-muted);">0/7 Phases Active</span>
+                </div>
+                <div class="kc-phases">
+                    <div class="kc-phase" data-phase="recon" title="Reconnaissance"></div>
+                    <div class="kc-phase" data-phase="weapon" title="Weaponization"></div>
+                    <div class="kc-phase" data-phase="delivery" title="Delivery"></div>
+                    <div class="kc-phase" data-phase="exploit" title="Exploitation"></div>
+                    <div class="kc-phase" data-phase="install" title="Installation"></div>
+                    <div class="kc-phase" data-phase="c2" title="Command & Control"></div>
+                    <div class="kc-phase" data-phase="action" title="Actions on Objective"></div>
+                </div>
+            </div>
+
+            <!-- Active Incidents (Col 1) -->
+            <div class="glass-panel" style="grid-column: 1 / 2; grid-row: 3 / 5;">
+                <div class="panel-header">
+                    <div class="panel-title"><span class="icon">🚨</span> Recent Alerts</div>
+                    <span class="panel-badge" id="alert-count" style="display:none">0</span>
+                </div>
+                <div class="panel-body" id="sentinel-body">
+                    <div class="empty-state"><span class="emoji">🛡️</span> Scanning...</div>
+                </div>
+            </div>
+
+            <div class="glass-panel" style="grid-column: 2 / 3;">
+                <div class="panel-header">
+                    <div class="panel-title"><span class="icon">🔮</span> Anomaly Detection</div>
+                    <span class="panel-badge" id="anomaly-count" style="display:none">0</span>
+                </div>
+                <div class="panel-body" id="anomalies-body">
+                    <div class="empty-state"><span class="emoji">🔮</span> Learning baselines...</div>
+                </div>
+            </div>
+
+
+
+        </div>
+
+        <!-- Footer removed -->
+
+
+    </div>
+
+    <!-- 🔌 Connection Modal -->
+    <div id="connect-modal" class="modal-overlay">
+        <div class="glass-panel modal-content">
+            <h3 style="margin-bottom:16px; color:var(--accent-primary);">⚙️ Settings & Connection</h3>
+
+            <div style="margin-bottom: 20px; padding-bottom: 20px; border-bottom: 1px solid rgba(255,255,255,0.1);">
+                <label class="form-label" style="color:var(--accent-success);">🔑 API Authentication</label>
+                <div style="display:flex; gap:8px;">
+                    <input type="password" id="api-key-input" placeholder="Enter API Key" class="glass-input">
+                    <button class="glass-btn" onclick="setApiKey()">Save</button>
+                    <button class="glass-btn" onclick="quickAuth()" title="Quick Auth (Local)"
+                        style="background:transparent; border:1px solid rgba(255,255,255,0.1);">⚡</button>
+                </div>
+            </div>
+
+            <h4 style="margin-bottom:12px; color:white;">🔌 SIEM Connection</h4>
+            <div class="form-group">
+                <label class="form-label">SIEM Platform</label>
+                <select class="glass-input" style="width:100%; background:rgba(0,0,0,0.5);">
+                    <option>Splunk Enterprise</option>
+                    <option>Elastic SIEM</option>
+                    <option>QRadar</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Host</label>
+                <input class="glass-input" id="siem-host" placeholder="localhost" style="width:100%;">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Port</label>
+                <input class="glass-input" id="siem-port" type="number" placeholder="8089" style="width:100%;">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Username</label>
+                <input class="glass-input" id="siem-user" placeholder="admin" style="width:100%;">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Password / Token</label>
+                <input class="glass-input" id="siem-pass" type="password" placeholder="••••••" style="width:100%;">
+            </div>
+            <div class="modal-actions">
+                <button class="glass-btn"
+                    style="background:transparent; border:1px solid rgba(255,255,255,0.1); color:var(--text-secondary);"
+                    onclick="closeModal()">Cancel</button>
+                <button class="glass-btn" onclick="connectSiem()">Connect</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ═══ Configuration ══════════════════
+        const API = 'http://localhost:5001';
+        let API_KEY = localStorage.getItem('opensentinel_api_key') || '';
+
+        const state = {
+            connected: false,
+            sentinelRunning: false,
+            sentinelInterval: null,
+            alerts: [],
+            anomalies: []
+        };
+
+        // ═══ DOM Cache ══════════════════════
+        const els = {
+            apiStatus: document.getElementById('api-status'),
+            apiText: document.getElementById('api-text'),
+            sentinelStatus: document.getElementById('sentinel-status'),
+            sentinelText: document.getElementById('sentinel-text'),
+            sentinelBody: document.getElementById('sentinel-body'),
+            anomaliesBody: document.getElementById('anomalies-body'),
+
+            chatMessages: document.getElementById('chat-messages'),
+            chatInput: document.getElementById('chat-input'),
+            sendBtn: document.getElementById('send-btn'),
+            startBtn: document.getElementById('start-btn'),
+            stopBtn: document.getElementById('stop-btn'),
+            alertCount: document.getElementById('alert-count'),
+            anomalyCount: document.getElementById('anomaly-count'),
+
+            kcCount: document.getElementById('kc-count'),
+            securityMetrics: document.getElementById('security-metrics')
+        };
+
+        // ═══ Auth Helpers ═══════════════════
+        const authHeaders = () => ({
+            'Content-Type': 'application/json',
+            'X-API-Key': API_KEY
+        });
+
+        function setApiKey() {
+            const input = document.getElementById('api-key-input');
+            API_KEY = input.value;
+            localStorage.setItem('opensentinel_api_key', API_KEY);
+            input.value = '';
+            checkAPI();
+            closeModal();
+        }
+
+        function quickAuth() {
+            API_KEY = 'dev-key-opensentinel-2024';
+            localStorage.setItem('opensentinel_api_key', API_KEY);
+            checkAPI();
+            closeModal();
+        }
+
+        // Utils
+        const updateStatus = (connected) => {
+            state.connected = connected;
+            if (connected) {
+                els.apiStatus.className = 'status-pill online';
+                els.apiText.textContent = 'API Connected';
+            } else {
+                els.apiStatus.className = 'status-pill offline';
+                els.apiText.textContent = 'Disconnected';
+            }
+        };
+
+        // ═══ API Check ══════════════════════
+        async function checkAPI() {
+            try {
+                const res = await fetch(`${API}/api/health`, {
+                    headers: authHeaders()
+                });
+                updateStatus(res.ok);
+            } catch {
+                updateStatus(false);
+            }
+        }
+
+        // ═══ Chat System ════════════════════
+        function addMessage(text, type = 'agent') {
+            const div = document.createElement('div');
+            div.className = `message ${type}`;
+            div.innerHTML = text;
+            els.chatMessages.appendChild(div);
+            els.chatMessages.scrollTop = els.chatMessages.scrollHeight;
+        }
+
+        async function sendMessage() {
+            const text = els.chatInput.value.trim();
+            if (!text) return;
+            addMessage(text, 'user');
+            els.chatInput.value = '';
+
+            try {
+                const res = await fetch(`${API}/api/chat`, {
+                    method: 'POST',
+                    headers: authHeaders(),
+                    body: JSON.stringify({ message: text })
+                });
+                const data = await res.json();
+                addMessage(data.response || data.detail || 'No response');
+            } catch (e) {
+                addMessage(`❌ Error: ${e.message}`, 'agent');
+            }
+        }
+
+        els.sendBtn.addEventListener('click', sendMessage);
+        els.chatInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') sendMessage();
+        });
+
+        // ═══ Sentinel System ════════════════
+        async function startSentinel() {
+            try {
+                const res = await fetch(`${API}/api/sentinel/start`, {
+                    method: 'POST',
+                    headers: authHeaders()
+                });
+                if (res.ok) {
+                    state.sentinelRunning = true;
+                    els.sentinelStatus.className = 'status-pill online';
+                    els.sentinelText.textContent = 'Active';
+                    els.startBtn.style.display = 'none';
+                    els.stopBtn.style.display = 'inline-block';
+                    els.startBtn.classList.add('active');
+                    state.sentinelInterval = setInterval(fetchAlerts, 15000);
+                    fetchAlerts();
+                }
+            } catch (e) {
+                addMessage(`❌ Sentinel Error: ${e.message}`);
+            }
+        }
+
+        async function stopSentinel() {
+            try {
+                await fetch(`${API}/api/sentinel/stop`, {
+                    method: 'POST',
+                    headers: authHeaders()
+                });
+                state.sentinelRunning = false;
+                els.sentinelStatus.className = 'status-pill offline';
+                els.sentinelText.textContent = 'Off';
+                els.startBtn.style.display = 'inline-block';
+                els.stopBtn.style.display = 'none';
+                els.startBtn.classList.remove('active');
+                clearInterval(state.sentinelInterval);
+            } catch (e) {
+                addMessage(`❌ Stop Error: ${e.message}`);
+            }
+        }
+
+        els.startBtn.addEventListener('click', startSentinel);
+        els.stopBtn.addEventListener('click', stopSentinel);
+
+        // ═══ Alerts ═════════════════════════
+        async function fetchAlerts() {
+            try {
+                const res = await fetch(`${API}/api/sentinel/alerts`, {
+                    headers: authHeaders()
+                });
+                const data = await res.json();
+                if (data.alerts && data.alerts.length > 0) {
+                    renderAlerts(data.alerts);
+                }
+            } catch (e) {
+                console.error('Fetch alerts error:', e);
+            }
+        }
+
+        function renderAlerts(alerts) {
+            els.sentinelBody.innerHTML = '';
+            els.alertCount.style.display = 'inline';
+            els.alertCount.textContent = alerts.length;
+
+            alerts.forEach(alert => {
+                const card = document.createElement('div');
+                card.className = `incident-card ${alert.severity || ''}`;
+                card.innerHTML = `
+                    <div class="alert-header">
+                        <span class="alert-rule">${alert.rule || alert.title || 'Alert'}</span>
+                        <span class="severity ${alert.severity || ''}">${alert.severity || 'info'}</span>
+                    </div>
+                    <div style="font-size:0.75rem; color:var(--text-muted); margin-top:4px;">${alert.description || alert.message || ''}</div>
+                `;
+                els.sentinelBody.appendChild(card);
+            });
+        }
+
+
+
+        // ═══ Connection Configuration ══════════════
+        const modal = document.getElementById('connect-modal');
+        function openModal() { modal.classList.add('visible'); }
+        function closeModal() { modal.classList.remove('visible'); }
+
+        async function connectSiem() {
+            const host = document.getElementById('siem-host').value;
+            const port = parseInt(document.getElementById('siem-port').value);
+            const user = document.getElementById('siem-user').value;
+            const pass = document.getElementById('siem-pass').value;
+
+            if (!host || !port || !user || !pass) { alert("Please fill all fields"); return; }
+
+            const btn = document.querySelector('#connect-modal .glass-btn:last-child');
+            const originalText = btn.textContent;
+            btn.textContent = "Connecting...";
+
+            try {
+                const res = await fetch(`${API}/api/connect`, {
+                    method: 'POST',
+                    headers: authHeaders(),
+                    body: JSON.stringify({
+                        host: host, port: port, username: user, password: pass
+                    })
+                });
+
+                const data = await res.json();
+                if (data.success) {
+                    alert("✅ " + data.message);
+                    closeModal();
+                } else {
+                    alert("❌ Error: " + (data.detail || "Connection failed"));
+                }
+            } catch (e) {
+                alert("❌ Network Error: " + e.message);
+            }
+            btn.textContent = originalText;
+        }
+
+        // ═══ Kill Chain ═════════════════════
+        function updateKillChain(phases) {
+            document.querySelectorAll('.kc-phase').forEach(el => {
+                el.classList.remove('active');
+            });
+            let activeCount = 0;
+            if (phases) {
+                phases.forEach(p => {
+                    const el = document.querySelector(`.kc-phase[data-phase="${p}"]`);
+                    if (el) {
+                        el.classList.add('active');
+                        activeCount++;
+                    }
+                });
+            }
+            els.kcCount.textContent = `${activeCount}/7 Phases Active`;
+        }
+
+        // ═══ Init ═══════════════════════════
+        checkAPI();
+        setInterval(checkAPI, 30000);
+        // ☰ Hamburger Menu Logic
+        const menuToggle = document.getElementById('menu-toggle');
+        const drawer = document.getElementById('mobile-drawer');
+        const overlay = document.getElementById('sidebar-overlay');
+
+        function toggleMenu() {
+            drawer.classList.toggle('open');
+            overlay.classList.toggle('open');
+            menuToggle.classList.toggle('open');
+        }
+
+        function closeMenu() {
+            drawer.classList.remove('open');
+            overlay.classList.remove('open');
+            menuToggle.classList.remove('open');
+        }
+
+        if (menuToggle) {
+            menuToggle.addEventListener('click', toggleMenu);
+        }
+        if (overlay) {
+            overlay.addEventListener('click', closeMenu);
+        }
+
+        // Close menu on nav item click
+        document.querySelectorAll('#mobile-drawer .nav-item').forEach(item => {
+            item.addEventListener('click', () => {
+                // Visual feedback
+                document.querySelectorAll('#mobile-drawer .nav-item').forEach(el => el.classList.remove('active'));
+                item.classList.add('active');
+                setTimeout(closeMenu, 150);
+            });
+        });
+    </script>
+
+    <!-- 📱 Mobile Sidebar Drawer -->
+    <div class="sidebar-overlay" id="sidebar-overlay"></div>
+    <div class="drawer" id="mobile-drawer">
+        <div class="drawer-header">
+            <div class="brand">
+                <span style="font-size: 1.2rem;">🛡️</span>
+                OpenSentinel
+            </div>
+        </div>
+        <div class="drawer-content" style="display:flex; flex-direction:column; gap:10px;">
+            <div class="sidebar-nav">
+                <div class="nav-item active"><span class="icon">📊</span> <span class="nav-text">Overview</span></div>
+                <div class="nav-item"><span class="icon">🕵️</span> <span class="nav-text">Threat Hunt</span></div>
+                <div class="nav-item"><span class="icon">🚨</span> <span class="nav-text">Incidents</span></div>
+            </div>
+
+            <div style="margin-top:auto; border-top:1px solid rgba(255,255,255,0.1); padding-top:20px;">
+                <button class="glass-btn" style="width:100%; display:flex; justify-content:center; gap:8px;"
+                    onclick="openModal()">
+                    <span>⚙️</span> Configure SIEM
+                </button>
+            </div>
+        </div>
+    </div>
+</body>
+
+</html>
