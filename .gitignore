@@ -41,6 +41,10 @@ logs/
 *.zip
 botsv3_data_set.tgz
 
+# SQLite database
+data/
+*.db
+
 # Models (large binary files)
 models/model-best/
 

@@ -38,6 +38,7 @@ from sentinel.anomaly_detector import AnomalyDetector
 from sentinel.incidents import IncidentManager
 from hunting.hunt_library import HuntLibrary
 from hunting.notebook import HuntNotebook
+from database import init_db, get_db
 
 from playbooks.engine import PlaybookEngine
 from copilot import summarize_incident, analyze_script, suggest_next_steps, enrich_iocs
@@ -63,6 +64,10 @@ app.add_middleware(
     allow_headers=["X-API-Key", "Content-Type", "Authorization"],
 )
 
+# ═══ Database ════════════════════════════════════════════════════════════════
+init_db()  # Creates data/opensentinel.db with all tables
+_db = get_db()
+
 # ═══ Security ════════════════════════════════════════════════════════════════
 security_config = get_security_config()
 security_middleware = SecurityMiddleware(security_config)
@@ -76,7 +81,7 @@ app.state.auth_manager = auth_manager
 agent: Optional[SOCAgent] = None
 detection_engine: Optional[DetectionEngine] = None
 anomaly_detector: Optional[AnomalyDetector] = None
-incident_manager = IncidentManager()
+incident_manager = IncidentManager(db=_db)
 hunt_library = HuntLibrary()
 
 playbook_engine = PlaybookEngine()
@@ -173,9 +178,21 @@ async def security_check(request: Request, call_next):
     for k, v in rate_info.items():
         response.headers[k] = v
 
-    # ── Audit log ──
+    # ── Audit log (console + database) ──
     security_middleware.log_request(request.method, path, client_ip,
                                    response.status_code, api_key)
+    try:
+        import time as _time
+        _db.execute(
+            """INSERT INTO audit_log (timestamp, method, path, client_ip, status_code, key_hint)
+               VALUES (?, ?, ?, ?, ?, ?)""",
+            (_time.strftime("%Y-%m-%dT%H:%M:%SZ", _time.gmtime()),
+             request.method, path, client_ip, response.status_code,
+             api_key[:8] + "..." if api_key else "none")
+        )
+        _db.commit()
+    except Exception:
+        pass  # Never let audit logging break request flow
 
     return response
 
@@ -249,7 +266,7 @@ async def connect_siem(req: ConnectRequest, request: Request):
                 username=req.username,
                 password=req.password
             )
-            detection_engine = DetectionEngine(agent)
+            detection_engine = DetectionEngine(agent, db=_db)
             anomaly_detector = AnomalyDetector(agent)
             return {"success": True, "message": f"Connected to {req.host}:{req.port}"}
     except Exception as e:
@@ -493,5 +510,6 @@ if __name__ == "__main__":
     print(f"\n🛡️ OpenSentinel Command Center v1.0.0 starting on port {port}...")
     print(f"   API Docs:    http://localhost:{port}/api/docs")
     print(f"   Dashboard:   http://localhost:{port}/dashboard")
+    print(f"   Database:    data/opensentinel.db (SQLite)")
     print(f"   OWASP:       API1-10 protections active\n")
     uvicorn.run(app, host="0.0.0.0", port=port)
