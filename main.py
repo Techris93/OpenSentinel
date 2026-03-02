@@ -397,6 +397,11 @@ async def list_incidents(request: Request):
 @app.get("/api/v1/incidents/{incident_id}")
 async def get_incident(incident_id: str, request: Request):
     """Get a specific incident with BOLA protection."""
+    # Input validation — sanitize incident_id
+    id_check = input_validator.validate_identifier(incident_id, "incident_id")
+    if not id_check["safe"]:
+        raise HTTPException(status_code=400, detail=id_check["reason"])
+
     incident = incident_manager.get(incident_id)
     if not incident:
         raise HTTPException(status_code=404, detail="Incident not found")
@@ -430,6 +435,11 @@ async def list_hunts():
 async def execute_hunt(hunt_id: str, request: Request):
     """Execute a threat hunt query. Requires analyst+ role."""
     _require_role(request, "analyst")  # API5
+
+    # Input validation — sanitize hunt_id
+    id_check = input_validator.validate_identifier(hunt_id, "hunt_id")
+    if not id_check["safe"]:
+        raise HTTPException(status_code=400, detail=id_check["reason"])
 
     if agent is None:
         raise HTTPException(status_code=400, detail="No SIEM connection")
@@ -470,6 +480,11 @@ async def copilot_analyze_script(req: ScriptAnalysisRequest, request: Request):
 async def copilot_enrich_iocs(req: IOCEnrichRequest, request: Request):
     """Enrich IOCs with threat intelligence."""
     _require_role(request, "analyst")  # API5
+
+    # Input validation — sanitize IOC list
+    ioc_check = input_validator.validate_ioc_list(req.iocs)
+    if not ioc_check["safe"]:
+        return {"results": [], "error": f"⚠️ Input blocked: {ioc_check['reason']}"}
 
     try:
         enriched = await enrich_iocs(req.iocs)
