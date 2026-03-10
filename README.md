@@ -16,6 +16,10 @@
   </p>
 </p>
 
+<p align="center">
+  <img src="docs/dashboard.png" alt="OpenSentinel Command Center Dashboard" width="100%">
+</p>
+
 ---
 
 ## Overview
