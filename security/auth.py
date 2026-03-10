@@ -40,14 +40,27 @@ class AuthManager:
         self._load_keys()
 
     def _load_keys(self):
-        """Load API keys from environment or config."""
-        env_key = os.getenv("OPENSENTINEL_API_KEY", "dev-key-opensentinel-2024")
+        """Load API keys from environment. Raises ValueError if none configured."""
+        env_key = os.getenv("OPENSENTINEL_API_KEY")
+        if not env_key:
+            raise ValueError(
+                "OPENSENTINEL_API_KEY is not set. "
+                "Generate a strong key (e.g. `openssl rand -hex 32`) and add it to .env. "
+                "No default key is accepted — this prevents source-code-level credential theft."
+            )
+        if len(env_key) < 32:
+            import warnings
+            warnings.warn(
+                f"OPENSENTINEL_API_KEY is only {len(env_key)} characters. "
+                "A minimum of 32 characters is strongly recommended.",
+                stacklevel=2
+            )
         self._api_keys[env_key] = {
             "role": "admin",
             "owner_id": "system",
             "created": datetime.utcnow().isoformat(),
             "expires": None,  # Never expires
-            "description": "Default admin key"
+            "description": "Primary admin key (from OPENSENTINEL_API_KEY env var)"
         }
 
     def validate_key(self, api_key: str) -> bool:

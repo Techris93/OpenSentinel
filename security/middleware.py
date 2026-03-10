@@ -16,11 +16,19 @@ from collections import defaultdict
 
 def get_security_config() -> Dict[str, Any]:
     """Load security configuration from environment."""
+    api_key = os.getenv("OPENSENTINEL_API_KEY")
+    if not api_key:
+        raise ValueError(
+            "OPENSENTINEL_API_KEY environment variable is not set. "
+            "Set a strong, unique key in your .env file before starting the server. "
+            "Never use a default or hardcoded key in production."
+        )
     return {
-        "api_key": os.getenv("OPENSENTINEL_API_KEY", "dev-key-opensentinel-2024"),
+        "api_key": api_key,
         "rate_limit": int(os.getenv("RATE_LIMIT", "60")),
         "rate_window": int(os.getenv("RATE_WINDOW", "60")),
-        "cors_origins": os.getenv("CORS_ORIGINS", "*").split(","),
+        # Default to localhost only — NEVER use "*" in production (CORS bypass)
+        "cors_origins": os.getenv("CORS_ORIGINS", "http://localhost:5001").split(","),
         "enable_security_headers": os.getenv("ENABLE_SECURITY_HEADERS", "true").lower() == "true",
     }
 
@@ -148,7 +156,7 @@ class SecurityMiddleware:
         headers = {
             "X-Content-Type-Options": "nosniff",
             "X-Frame-Options": "DENY",
-            "X-XSS-Protection": "1; mode=block",
+            # X-XSS-Protection is deprecated — CSP below supersedes it
             "Strict-Transport-Security": "max-age=31536000; includeSubDomains; preload",
             "Content-Security-Policy": (
                 "default-src 'self'; "
@@ -156,12 +164,17 @@ class SecurityMiddleware:
                 "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
                 "font-src https://fonts.gstatic.com; "
                 "img-src 'self' data:; "
-                "connect-src 'self'"
+                "connect-src 'self'; "
+                "frame-ancestors 'none'; "
+                "base-uri 'self'; "
+                "form-action 'self'"
             ),
             "Referrer-Policy": "strict-origin-when-cross-origin",
-            "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+            "Permissions-Policy": "camera=(), microphone=(), geolocation=(), payment=()",
             "Cache-Control": "no-store, no-cache, must-revalidate",
             "Pragma": "no-cache",
+            "Cross-Origin-Opener-Policy": "same-origin",
+            "Cross-Origin-Resource-Policy": "same-origin",
         }
 
         for key, value in headers.items():

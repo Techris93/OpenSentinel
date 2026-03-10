@@ -84,8 +84,9 @@ async def generate(prompt: str, max_retries: int = 3) -> str:
             return response.text
 
         except Exception as e:
+            last_error = e
             wait_time = 2 ** attempt
             print(f"Gemini API error (attempt {attempt + 1}): {e}. Retrying in {wait_time}s...")
             await asyncio.sleep(wait_time)
 
-    return f"[Copilot error: Gemini API failed after {max_retries} attempts: {str(e)}]"
+    return f"[Copilot error: Gemini API failed after {max_retries} attempts: {last_error}]"

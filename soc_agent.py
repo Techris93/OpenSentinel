@@ -86,30 +86,53 @@ class SOCAgent:
             if word in action_keywords:
                 keywords["actions"].append(word)
 
-        # Context update
+        # Context update — avoid logging user query content
         session_id = self.context.get("session_id", "default")
-        print(f"[SOCAgent] Extracted keywords for session '{session_id}': {keywords}")
+        print(f"[SOCAgent] Extracted {len(keywords['ips'])} IPs, "
+              f"{len(keywords['actions'])} actions for session '{session_id}'")
 
         return keywords
 
+    @staticmethod
+    def _escape_spl_value(value: str) -> str:
+        """Escape a value for safe inclusion in SPL queries.
+        Prevents SPL injection by escaping quotes and removing pipe characters.
+        """
+        # Remove pipe characters which start SPL commands
+        value = value.replace("|", "")
+        # Escape double quotes
+        value = value.replace("\\", "\\\\").replace('"', '\\"')
+        # Strip leading/trailing whitespace
+        return value.strip()
+
     def build_spl_query(self, keywords: Dict[str, Any]) -> str:
-        """Build a Splunk SPL query from extracted keywords."""
+        """Build a Splunk SPL query from extracted keywords.
+        All values are escaped before interpolation to prevent SPL injection (CWE-89).
+        """
         parts = ["search"]
 
         if keywords.get("ips"):
-            ip_clause = " OR ".join([f'src_ip="{ip}" OR dest_ip="{ip}"' for ip in keywords["ips"]])
+            ip_clause = " OR ".join([
+                f'src_ip="{self._escape_spl_value(ip)}" OR dest_ip="{self._escape_spl_value(ip)}"'
+                for ip in keywords["ips"]
+            ])
             parts.append(f"({ip_clause})")
 
         if keywords.get("users"):
-            user_clause = " OR ".join([f'user="{u}"' for u in keywords["users"]])
+            user_clause = " OR ".join([
+                f'user="{self._escape_spl_value(u)}"' for u in keywords["users"]
+            ])
             parts.append(f"({user_clause})")
 
         if keywords.get("actions"):
+            # Actions are matched against a safe allowlist — no escaping needed
             action_clause = " OR ".join(keywords["actions"])
             parts.append(f"({action_clause})")
 
         if keywords.get("domains"):
-            domain_clause = " OR ".join([f'domain="{d}"' for d in keywords["domains"]])
+            domain_clause = " OR ".join([
+                f'domain="{self._escape_spl_value(d)}"' for d in keywords["domains"]
+            ])
             parts.append(f"({domain_clause})")
 
         if len(parts) == 1:
@@ -119,12 +142,15 @@ class SOCAgent:
 
     def process_query(self, query: str) -> List[Dict]:
         """Process a natural language query and return Splunk results."""
-        print(f"[SOCAgent] Processing query: {query}")
+        # Do NOT log user query content — it may contain sensitive data
+        print(f"[SOCAgent] Processing query (length={len(query)})")
 
         keywords = self.extract_keywords(query)
         spl = self.build_spl_query(keywords)
 
-        print(f"[SOCAgent] Generated SPL: {spl}")
+        # Log only structural info about the query, not its content
+        print(f"[SOCAgent] Generated SPL query with {len(keywords['ips'])} IP filters, "
+              f"{len(keywords['actions'])} action filters")
 
         try:
             job = self.service.jobs.create(spl, **{

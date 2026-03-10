@@ -294,7 +294,8 @@ async def chat(msg: ChatMessage, request: Request):
             # API10 — Treat external API response as untrusted text
             return {"response": str(response)[:5000]}
         except Exception as e:
-            return {"response": f"No SIEM connected. Error: {str(e)}"}
+            print(f"[Gemini] Error: {type(e).__name__}: {e}")
+            return {"response": "AI analysis is temporarily unavailable. Please try again later."}
 
     try:
         results = agent.process_query(msg.message)
@@ -317,7 +318,8 @@ async def chat(msg: ChatMessage, request: Request):
             error_msg = results[0].get("error", "No results found") if results else "No results found"
             return {"response": f"Query returned no results or error: {error_msg}"}
     except Exception as e:
-        return {"response": f"❌ Error: {str(e)}"}
+        print(f"[Chat] Internal error: {type(e).__name__}: {e}")
+        return {"response": "An error occurred while processing your query. Please try again."}
 
 
 # ═══ Sentinel (API5 — admin to start/stop, analyst to read) ═════════════════
@@ -328,10 +330,9 @@ async def start_sentinel(request: Request):
     _require_role(request, "admin")  # API5
 
     global sentinel_running
-    if agent is None:
-        raise HTTPException(status_code=400, detail="No SIEM connection. Connect first.")
     sentinel_running = True
-    return {"status": "started", "message": "Sentinel detection engine activated"}
+    mode = "live" if agent is not None else "demo"
+    return {"status": "started", "message": f"Sentinel detection engine activated ({mode} mode)", "mode": mode}
 
 @app.post("/api/sentinel/stop")
 @app.post("/api/v1/sentinel/stop")
@@ -346,9 +347,21 @@ async def stop_sentinel(request: Request):
 @app.get("/api/sentinel/alerts")
 @app.get("/api/v1/sentinel/alerts")
 async def get_sentinel_alerts():
-    """Get current security alerts. Analyst+ access."""
+    """Get current security alerts. Returns demo alerts if in standalone mode."""
+    import random, time as _t
     if detection_engine is None:
-        return {"alerts": []}
+        # Demo mode: return sample alerts when running without a SIEM
+        if not sentinel_running:
+            return {"alerts": []}
+        demo_alerts = [
+            {"rule": "Brute Force Detected", "severity": "critical", "description": "12 failed logins from 192.168.1.104 in 60s", "source_ip": "192.168.1.104"},
+            {"rule": "Suspicious Port Scan", "severity": "high", "description": "Sequential scan of 256 ports from 10.0.0.88", "source_ip": "10.0.0.88"},
+            {"rule": "Lateral Movement", "severity": "high", "description": "NTLM pass-the-hash attempt detected on DC1", "source_ip": "10.0.0.21"},
+            {"rule": "Outbound C2 Beacon", "severity": "critical", "description": "Periodic beacon to known bad IP 45.33.2.79 every 60s", "source_ip": "10.0.0.55"},
+            {"rule": "PowerShell Encoded Command", "severity": "medium", "description": "Encoded -EncodedCommand execution detected on WORKSTATION7", "source_ip": "10.0.0.77"},
+        ]
+        # Return a random 2-4 subset to simulate live feed
+        return {"alerts": random.sample(demo_alerts, k=random.randint(2, len(demo_alerts))), "mode": "demo"}
     try:
         alerts = detection_engine.get_alerts()
         return {"alerts": alerts}
@@ -473,7 +486,7 @@ async def copilot_analyze_script(req: ScriptAnalysisRequest, request: Request):
         # API10 — Truncate external AI response
         return {"analysis": str(analysis)[:10000]}
     except Exception as e:
-        return {"analysis": f"Error: {str(e)}"}
+        return {"analysis": "Script analysis encountered an error. Please try again."}
 
 @app.post("/api/copilot/enrich")
 @app.post("/api/v1/copilot/enrich")

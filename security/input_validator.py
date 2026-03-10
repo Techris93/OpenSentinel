@@ -295,7 +295,9 @@ class InputValidator:
         return text
 
     def validate_api_key_format(self, key: str) -> bool:
-        """Validate API key format."""
-        if not key or len(key) < 8:
+        """Validate API key format.
+        Requires 32+ characters for sufficient entropy (128-bit minimum).
+        """
+        if not key or len(key) < 32:
             return False
         return bool(re.match(r'^[a-zA-Z0-9_\-]+$', key))
